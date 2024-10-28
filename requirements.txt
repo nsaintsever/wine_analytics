@@ -1,0 +1,4 @@
+streamlit==1.36.0
+pandas==2.2.3
+plotly==5.9.0
+CurrencyConverter==0.17.33
