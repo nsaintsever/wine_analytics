@@ -7,8 +7,10 @@ import matplotlib.colors as mcolors
 from currency_converter import CurrencyConverter
 from functools import lru_cache
 
-st.set_page_config(layout="wide")
 st.set_page_config(page_title="🍇 Wine Analytics")
+
+st.set_page_config(layout="wide")
+
 st.markdown(
     """
     <style>
