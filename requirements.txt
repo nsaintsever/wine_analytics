@@ -3,3 +3,6 @@ pandas==2.2.3
 plotly==5.9.0
 CurrencyConverter==0.17.33
 matplotlib==3.5.3
+requests==2.32.3
+beautifulsoup4==4.11.2
+yfinance==0.2.44
