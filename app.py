@@ -137,7 +137,7 @@ def add_bars_to_fig(fig, data, y_col, hover_template, title, yaxis_title, cmap, 
             tickangle=-45,
             rangeslider=dict(visible=True),
         ),
-        yaxis=dict(title=yaxis_title, automargin=True, autorange=True),
+        yaxis=dict(title=yaxis_title, automargin=True, autorange=True,fixedrange=False),
         barmode='group'
     )
 
@@ -231,7 +231,7 @@ if page == "Analyse Château - Prix & Volume":
     )
 
     fig_price.update_layout(
-        yaxis=dict(fixedrange=False)
+        yaxis=dict(autorange = True, fixedrange=False)
     )
     st.plotly_chart(fig_price)
 
@@ -250,7 +250,7 @@ if page == "Analyse Château - Prix & Volume":
     )
 
     fig_quantity.update_layout(
-        yaxis=dict(fixedrange=False)
+        yaxis=dict(autorange = True, fixedrange=False)
     )
     st.plotly_chart(fig_quantity)
         
@@ -358,6 +358,26 @@ elif page == "Analyse Vin - Prix & Volume":
     # Sort by date
     df_stats = df_stats.sort_values('date')
 
+    # Prepare the hover text with details per négociant
+    df_quantities = df_vin_agg_full.groupby(['date', 'negociant']).agg({
+        'quantite_totale': 'sum'
+    }).reset_index()
+
+    # Function to create hover text
+    def create_hover_text(group):
+        date = group.name
+        total_volume = group['quantite_totale'].sum()
+        hover_text = f"<b>Date:</b> {date:%Y-%m-%d}<br><b>Volume Total:</b> {total_volume} bouteilles<br><br><b>Détail par négociant:</b><br>"
+        for _, row in group.iterrows():
+            hover_text += f"<b>{row['negociant']}:</b> {row['quantite_totale']}<br>"
+        return hover_text
+
+    # Create hover texts
+    hover_texts = df_quantities.groupby('date').apply(create_hover_text)
+
+    # Merge hover texts into df_stats
+    df_stats = df_stats.merge(hover_texts.rename('hover_text'), left_on='date', right_index=True, how='left')
+
     # Add CSS for vertical line between columns (if needed)
     st.markdown(
         """
@@ -422,7 +442,11 @@ elif page == "Analyse Vin - Prix & Volume":
             xaxis_title="Date",
             yaxis_title="Prix Min",
             hovermode="x unified",
-            yaxis=dict(range=[0, df_stats[['prix_unitaire', 'prix_eur_min']].max().max() + 10])
+            yaxis=dict(
+                rangemode='tozero',  # Start y-axis at 0
+                autorange=True,
+                fixedrange=False
+            )
         )
 
         st.plotly_chart(fig_price)
@@ -497,6 +521,7 @@ elif page == "Analyse Vin - Prix & Volume":
     # Below the two columns, plot the evolution of total volumes
     st.subheader(f"Évolution des volumes totaux dans le temps pour {vin_selected_display} - {millesime_selected}")
 
+    # Plot the volumes with detailed hover
     fig_volumes = go.Figure()
 
     fig_volumes.add_trace(go.Scatter(
@@ -505,17 +530,19 @@ elif page == "Analyse Vin - Prix & Volume":
         mode='lines+markers',
         name="Volume total",
         line=dict(color='darkgoldenrod'),
-        hovertemplate=(
-            '<b>Date:</b> %{x|%Y-%m-%d}<br>'
-            '<b>Volume Total:</b> %{y} bouteilles<extra></extra>'
-        )
+        hovertext=df_stats['hover_text'],  # Use the custom hover text
+        hoverinfo='text'  # Specify that only the text is shown
     ))
 
     fig_volumes.update_layout(
         xaxis_title="Date",
         yaxis_title="Quantité totale",
-        hovermode="closest",
-        yaxis=dict(range=[0, df_stats['quantite_totale'].max() + 10]),
+        hovermode="x unified",
+        yaxis=dict(
+            rangemode='tozero',  # Start y-axis at 0
+            autorange=True,
+            fixedrange=False
+        ),
         xaxis=dict(tickmode='auto', nticks=10)
     )
 
