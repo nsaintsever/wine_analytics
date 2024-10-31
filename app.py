@@ -7,7 +7,24 @@ import matplotlib.colors as mcolors
 from currency_converter import CurrencyConverter
 from functools import lru_cache
 
+st.markdown(
+    """
+    <style>
+    /* Scale down the content to 80% */
+    .main-content {
+        transform: scale(0.8); /* Adjust this to your preference */
+        transform-origin: top left; /* Keeps content aligned with the top-left corner */
+    }
+    /* Optional: Adjust width for centered alignment */
+    section.main > div {
+        max-width: 85%; /* Adjust to control overall app width */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 st.set_page_config(layout="wide")
+st.set_page_config(page_title="🍇 Wine Analytics")
 
 # Load data
 df = pd.read_csv("lacoste_sub_df.csv", sep=',', quotechar='"')
