@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 import yfinance as yf  # Import yfinance for exchange rates
 
-st.set_page_config(page_title="🍇 Wine Analytics", layout="wide")
+st.set_page_config(page_title="Wine Analytics", page_icon="🍇", layout="wide")
 
 st.markdown(
     """
