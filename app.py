@@ -7,6 +7,8 @@ import matplotlib.colors as mcolors
 from currency_converter import CurrencyConverter
 from functools import lru_cache
 
+st.set_page_config(layout="wide")
+st.set_page_config(page_title="🍇 Wine Analytics")
 st.markdown(
     """
     <style>
@@ -23,8 +25,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-st.set_page_config(layout="wide")
-st.set_page_config(page_title="🍇 Wine Analytics")
+
 
 # Load data
 df = pd.read_csv("lacoste_sub_df.csv", sep=',', quotechar='"')
