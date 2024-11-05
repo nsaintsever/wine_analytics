@@ -86,7 +86,16 @@ red_cmap = mcolors.LinearSegmentedColormap.from_list("red_gradient", ["#FFE5E5",
 blue_cmap = mcolors.LinearSegmentedColormap.from_list("blue_gradient", ["#E0F7FA", "#0288D1", "#01579B"])  # For future use
 
 # Define the add_bars_to_fig function globally
-def add_bars_to_fig(fig, data, y_col, hover_template, title, yaxis_title, cmap, timeframe_freq):
+def add_bars_to_fig_with_vintage_coloring(fig, data, y_col, hover_template, title, yaxis_title, yellow_cmap, blue_cmap, timeframe_freq):
+    # Define the vintage color mapping
+    vintage_colors = {
+        1980: 'blue', 1981: 'blue', 1983: 'blue', 1984: 'blue', 1985: 'blue', 1986: 'blue', 1987: 'blue', 
+        1988: 'blue', 1991: 'blue', 1992: 'blue', 1993: 'blue', 1994: 'blue', 1995: 'blue', 1997: 'blue', 
+        1998: 'blue', 1999: 'blue', 2001: 'blue', 2002: 'blue', 2004: 'blue', 2006: 'blue', 2007: 'blue', 
+        2008: 'blue', 2011: 'blue', 2012: 'blue', 2013: 'blue', 2014: 'blue', 2017: 'blue', 2021: 'blue', 
+        2023: 'blue'
+    }
+
     unique_timeframes = {}
     x_position = 0
     centered_x_vals = []
@@ -96,11 +105,10 @@ def add_bars_to_fig(fig, data, y_col, hover_template, title, yaxis_title, cmap, 
         num_timeframes = len(group)
         x_values = [x_position + i for i in range(num_timeframes)]
         y_values = group[y_col].tolist()
-        # Use the passed cmap
-        if num_timeframes > 1:
-            colors = [mcolors.to_hex(cmap(i / (num_timeframes - 1))) for i in range(num_timeframes)]
-        else:
-            colors = [mcolors.to_hex(cmap(0.5))]
+        
+        # Use `blue_cmap` if vintage is specified as blue, else `yellow_cmap`
+        cmap = blue_cmap if vintage in vintage_colors else yellow_cmap
+        colors = [mcolors.to_hex(cmap(i / (num_timeframes - 1))) for i in range(num_timeframes)] if num_timeframes > 1 else [mcolors.to_hex(cmap(0.5))]
 
         fig.add_trace(go.Bar(
             x=x_values,
@@ -137,7 +145,7 @@ def add_bars_to_fig(fig, data, y_col, hover_template, title, yaxis_title, cmap, 
             tickangle=-45,
             rangeslider=dict(visible=True),
         ),
-        yaxis=dict(title=yaxis_title, automargin=True, autorange=True,fixedrange=False),
+        yaxis=dict(title=yaxis_title, automargin=True, autorange=True, fixedrange=False),
         barmode='group'
     )
 
@@ -152,6 +160,75 @@ def add_bars_to_fig(fig, data, y_col, hover_template, title, yaxis_title, cmap, 
         ))
 
     return fig
+
+
+def add_bars_to_fig_simple(fig, data, y_col, hover_template, title, yaxis_title, red_cmap, timeframe_freq):
+    unique_timeframes = {}
+    x_position = 0
+    centered_x_vals = []
+    vintage_labels = []
+
+    for vintage, group in data.groupby('millesime'):
+        num_timeframes = len(group)
+        x_values = [x_position + i for i in range(num_timeframes)]
+        y_values = group[y_col].tolist()
+
+        # Use `red_cmap` for all bars
+        colors = [mcolors.to_hex(red_cmap(i / (num_timeframes - 1))) for i in range(num_timeframes)] if num_timeframes > 1 else [mcolors.to_hex(red_cmap(0.5))]
+
+        fig.add_trace(go.Bar(
+            x=x_values,
+            y=y_values,
+            marker=dict(color=colors),
+            showlegend=False,
+            hovertemplate=hover_template
+        ))
+
+        centered_x_vals.append(np.mean(x_values))
+        vintage_labels.append(int(vintage))
+
+        # Create timeframe labels for the legend
+        for i, row in enumerate(group.itertuples()):
+            start_date = row.date
+            if timeframe_freq == "7D":
+                end_date = start_date + pd.Timedelta(days=6)
+            elif timeframe_freq == "14D":
+                end_date = start_date + pd.Timedelta(days=13)
+            elif timeframe_freq == "30D":
+                end_date = start_date + pd.Timedelta(days=29)
+            timeframe_label = f"{start_date.date()} - {end_date.date()}"
+
+            if timeframe_label not in unique_timeframes:
+                unique_timeframes[timeframe_label] = colors[i]
+
+        x_position += num_timeframes + 2
+
+    fig.update_layout(
+        title=title,
+        xaxis=dict(
+            title="Vintage Year",
+            tickvals=centered_x_vals,
+            ticktext=vintage_labels,
+            tickangle=-45,
+            rangeslider=dict(visible=True),
+        ),
+        yaxis=dict(title=yaxis_title, automargin=True, autorange=True, fixedrange=False),
+        barmode='group'
+    )
+
+    # Add legend items for each unique timeframe
+    for label, color in unique_timeframes.items():
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode="markers",
+            marker=dict(size=10, color=color),
+            legendgroup=label,
+            showlegend=True,
+            name=label
+        ))
+
+    return fig
+
 
 if page == "Analyse Château - Prix & Volume":
 
@@ -208,7 +285,7 @@ if page == "Analyse Château - Prix & Volume":
     # Sum total quantity on those dates for each timeframe
     min_price_totals = (
         min_price_rows.groupby(['millesime', 'timeframe_start_date'])
-        .agg({'total_quantity_available': 'sum'})
+        .agg({'total_quantity_available': 'max'})
         .reset_index()
     )
 
@@ -219,16 +296,18 @@ if page == "Analyse Château - Prix & Volume":
     # Plot minimum EUR equivalent price using yellow colormap
     fig_price = go.Figure()
 
-    fig_price = add_bars_to_fig(
+    fig_price = add_bars_to_fig_with_vintage_coloring(
         fig_price,
         windowed_min_prices,
         'prix_eur_equiv',
         "Prix - EUR: %{y}<extra></extra>",
         f"Meilleure offre par {selected_timeframe} pour {selected_display_name} - {selected_format}",
         "Meilleure Offre (EUR - €)",
-        yellow_cmap,  # Use yellow colormap for price
-        timeframe_freq  # Pass timeframe_freq
+        yellow_cmap,  # Use yellow colormap for vintages without specified colors
+        blue_cmap,    # Use blue colormap for vintages specified as blue
+        timeframe_freq
     )
+
 
     fig_price.update_layout(
         yaxis=dict(autorange = True, fixedrange=False)
@@ -238,7 +317,7 @@ if page == "Analyse Château - Prix & Volume":
     # Plot total volume chart using red colormap
     fig_quantity = go.Figure()
 
-    fig_quantity = add_bars_to_fig(
+    fig_quantity = add_bars_to_fig_simple(
         fig_quantity,
         min_price_totals,
         'total_quantity_available',
@@ -246,7 +325,7 @@ if page == "Analyse Château - Prix & Volume":
         f"Volume visibles par {selected_timeframe} pour {selected_display_name} - {selected_format}",
         "Total Volume Visible",
         red_cmap,  # Use red colormap for volume
-        timeframe_freq  # Pass timeframe_freq
+        timeframe_freq
     )
 
     fig_quantity.update_layout(
@@ -268,7 +347,8 @@ elif page == "Analyse Vin - Prix & Volume":
     last_date_in_data = df['date'].max()
 
     vin_selected_display = st.sidebar.selectbox("Choisissez un vin", display_wine_options)
-    vin_selected = vin_options[vin_selected_display]
+    vin_selected = next((k for k, v in vin_display_names.items() if v == vin_selected_display), None)
+
 
     millesime_selected = st.sidebar.selectbox("Choisissez un millésime", millesimes_sorted)
     format_options = df[(df['vin_clean'] == vin_selected) & (df['millesime'] == millesime_selected)]['format'].unique()
