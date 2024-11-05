@@ -284,11 +284,10 @@ if page == "Analyse Château - Prix & Volume":
 
     # Sum total quantity on those dates for each timeframe
     min_price_totals = (
-        min_price_rows.groupby(['millesime', 'timeframe_start_date'])
-        .agg({'total_quantity_available': 'max'})
-        .reset_index()
+        min_price_rows.groupby(['millesime', 'date','timeframe_start_date'])
+        .agg({'total_quantity_available': 'sum'},
+            {'timeframe_start_date' : "min"}).groupby(["millesime","timeframe_start_date"]).agg({"total_quantity_available":"max"},{"timeframe_start_date":"min"}).reset_index()
     )
-
     # Rename columns for plotting
     windowed_min_prices = min_price_per_timeframe.rename(columns={'timeframe_start_date': 'date'})
     min_price_totals = min_price_totals.rename(columns={'timeframe_start_date': 'date'})
