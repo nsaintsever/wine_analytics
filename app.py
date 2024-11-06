@@ -52,7 +52,7 @@ if live_conversion_rate is None:
 
 # Download historical exchange rates via yfinance
 ticker = 'GBPEUR=X'
-fx_data = yf.download(ticker, start='2000-01-01')
+fx_data = yf.download(ticker, start='2024-01-01')
 fx_data.reset_index(inplace=True)
 
 # Create exchange rate series
