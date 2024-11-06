@@ -64,6 +64,7 @@ conversion_rate = fx_series.iloc[-1]
 # Load data
 df = pd.read_csv("lacoste_sub_df.csv", sep=',', quotechar='"')
 df['date'] = pd.to_datetime(df['date'], format='%Y%m%d')
+df['millesime'] = pd.to_numeric(df['millesime']).astype(int)
 df['quantite_totale'] = df['per'] * df['quantite']
 
 # Sidebar navigation and settings
@@ -282,12 +283,14 @@ if page == "Analyse Château - Prix & Volume":
 
     min_price_rows['date'] = pd.to_datetime(min_price_rows['date'])
 
+    
     # Sum total quantity on those dates for each timeframe
     min_price_totals = (
-        min_price_rows.groupby(['millesime', 'date','timeframe_start_date'])
-        .agg({'total_quantity_available': 'sum'},
-            {'timeframe_start_date' : "min"}).groupby(["millesime","timeframe_start_date"]).agg({"total_quantity_available":"max"},{"timeframe_start_date":"min"}).reset_index()
+        min_price_rows.groupby(['millesime', 'date'])
+        .agg({'total_quantity_available': 'max'})
+        .reset_index()
     )
+    
     # Rename columns for plotting
     windowed_min_prices = min_price_per_timeframe.rename(columns={'timeframe_start_date': 'date'})
     min_price_totals = min_price_totals.rename(columns={'timeframe_start_date': 'date'})
@@ -313,24 +316,63 @@ if page == "Analyse Château - Prix & Volume":
     )
     st.plotly_chart(fig_price)
 
-    # Plot total volume chart using red colormap
+
+    
+    
+    grouped_volumes = filtered_df.groupby(["millesime", "date"]).agg({"total_quantity_available": "sum"}).sort_values("date").reset_index()
+
+    # 2. Définir la fonction pour assigner 'timeframe_start_date'
+    def assign_timeframe_start_date(dates, freq):
+        if freq == '7D':
+            # Assignation du début de la semaine (par exemple, lundi)
+            return dates - pd.to_timedelta(dates.dt.weekday, unit='d')
+        elif freq == '14D':
+            # Assignation par période de 14 jours à partir de la première date
+            first_date = dates.min()
+            return first_date + pd.to_timedelta((dates - first_date).dt.days // 14 * 14, unit='d')
+        elif freq == '30D':
+            # Assignation au début du mois
+            return dates.dt.to_period('M').dt.start_time
+        else:
+            # Si aucune fréquence spécifique, assigner la date elle-même
+            return dates
+
+    # 3. Ajouter la colonne 'timeframe_start_date'
+    grouped_volumes['timeframe_start_date'] = assign_timeframe_start_date(grouped_volumes['date'], timeframe_freq)
+
+    # 4. Grouper par 'millesime' et 'timeframe_start_date' pour obtenir les totaux par timeframe
+    grouped_timeframes = grouped_volumes.groupby(['millesime', 'timeframe_start_date']).agg({'total_quantity_available': 'max'}).reset_index()
+
+    # 5. Renommer 'timeframe_start_date' en 'date' pour compatibilité avec les fonctions de plotting
+    grouped_timeframes = grouped_timeframes.rename(columns={'timeframe_start_date': 'date'})
+
+    # 6. Utiliser 'grouped_timeframes' pour tracer fig_quantity
     fig_quantity = go.Figure()
 
     fig_quantity = add_bars_to_fig_simple(
         fig_quantity,
-        min_price_totals,
+        grouped_timeframes,
         'total_quantity_available',
         "Volumes visibles : %{y}<extra></extra>",
         f"Volume visibles par {selected_timeframe} pour {selected_display_name} - {selected_format}",
         "Total Volume Visible",
-        red_cmap,  # Use red colormap for volume
+        red_cmap,  # Utilisez red_cmap si vous voulez conserver votre colormap rouge
         timeframe_freq
     )
 
     fig_quantity.update_layout(
-        yaxis=dict(autorange = True, fixedrange=False)
+        yaxis=dict(autorange=True, fixedrange=False),
+        xaxis_title="Début du Timeframe",
+        yaxis_title="Total Quantity Available",
+        title=f"Volumes visibles par {selected_timeframe} pour {selected_display_name} - {selected_format}"
     )
     st.plotly_chart(fig_quantity)
+    
+    
+    
+    
+    
+    
         
 elif page == "Analyse Vin - Prix & Volume":
     # Parameters for Page 2
