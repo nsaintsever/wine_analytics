@@ -59,7 +59,11 @@ fx_data.reset_index(inplace=True)
 fx_series = fx_data.set_index('Date')['Close']
 
 # For the first page, use the latest exchange rate from yfinance
-conversion_rate = fx_series.iloc[-1]
+if fx_series.empty:
+    conversion_rate = 1.1701
+else:
+    conversion_rate = fx_series.iloc[-1]
+
 
 # Load data
 df = pd.read_csv("lacoste_sub_df.csv", sep=',', quotechar='"')
