@@ -67,7 +67,7 @@ else:
 
 # Load data
 df = pd.read_csv("lacoste_sub_df.csv", sep=',', quotechar='"')
-df['date'] = pd.to_datetime(df['date'], format='%Y%m%d')
+df['date'] = pd.to_datetime(df['date'], format='%d%m%y')
 df['millesime'] = pd.to_numeric(df['millesime']).astype(int)
 df['quantite_totale'] = df['per'] * df['quantite']
 
